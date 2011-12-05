@@ -76,6 +76,7 @@ import se.sics.cooja.mspmote.MspMote;
 import se.sics.cooja.mspmote.plugins.MspBreakpointContainer;
 import se.sics.mspsim.util.Utils;
 
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
@@ -112,6 +113,9 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 	 */
 	public MSPGDBStub(Mote mote, Simulation simulationToVisualize, GUI gui) {
 		super("Msp GDBStub", gui);
+		
+		logger.setLevel(Level.INFO);
+		
 		this.mspMote = (MspMote) mote;
 		this.cpu = this.mspMote.getCPU();
 		simulation = simulationToVisualize;
