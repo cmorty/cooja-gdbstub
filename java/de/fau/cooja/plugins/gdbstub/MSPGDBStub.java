@@ -46,22 +46,21 @@ package de.fau.cooja.plugins.gdbstub;
 
 
 import java.awt.GridLayout;
-
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.security.InvalidParameterException;
+import java.util.Collection;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Vector;
 
 import javax.swing.JLabel;
 
-import se.sics.mspsim.core.EmulationException;
-import se.sics.mspsim.core.MSP430Core;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.jdom.Element;
 
 import se.sics.cooja.ClassDescription;
 import se.sics.cooja.GUI;
@@ -69,18 +68,12 @@ import se.sics.cooja.Mote;
 import se.sics.cooja.MotePlugin;
 import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
-
 import se.sics.cooja.VisPlugin;
-
 import se.sics.cooja.mspmote.MspMote;
-import se.sics.cooja.mspmote.plugins.MspBreakpointContainer;
+import se.sics.mspsim.core.CPUMonitor;
+import se.sics.mspsim.core.EmulationException;
+import se.sics.mspsim.core.MSP430Core;
 import se.sics.mspsim.util.Utils;
-
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.jdom.Element;
-
-import java.util.Collection;
 
 @ClassDescription("Msp GDBStub")
 @PluginType(PluginType.MOTE_PLUGIN)
@@ -95,11 +88,43 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 	private MspMote mspMote;
 	private MSP430Core cpu;
 	private boolean stoppedInt = false;
-	private MspBreakpointContainer breakpoints = null;
 	private Integer port = 0;
 	private JLabel info;
 	private Thread server_thread;
 	private boolean stopThread = false;
+	private Vector<Integer> mBps = new Vector<Integer>();
+	
+	private CPUMonitor mBp = new CPUMonitor() {															
+		public void cpuAction(int type, int adr, int data) {
+			if (mspMote.getSimulation().isRunning()) {
+				/* Stop simulation immediately */
+				mspMote.stopNextInstruction();
+			}
+		}
+	};
+	
+	private Vector<Integer> mBpReads = new Vector<Integer>();
+	private CPUMonitor mBpRead = new CPUMonitor() {															
+		public void cpuAction(int type, int adr, int data) {
+			if(type != MEMORY_READ) return;
+			if (mspMote.getSimulation().isRunning()) {
+				/* Stop simulation immediately */
+				mspMote.stopNextInstruction();
+			}
+		}
+	};
+	
+	private Vector<Integer> mBpWrites = new Vector<Integer>();
+	private CPUMonitor mBpWrite = new CPUMonitor() {															
+		public void cpuAction(int type, int adr, int data) {
+			if(type != MEMORY_WRITE) return;
+			if (mspMote.getSimulation().isRunning()) {
+				/* Stop simulation immediately */
+				mspMote.stopNextInstruction();
+			}
+		}
+	};
+	
 
 	/**
 	 * GDB-Stub for MSP430
@@ -156,10 +181,6 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 	}
 
 	public void startPlugin() {
-		breakpoints = this.mspMote.getBreakpointsContainer();
-		if(breakpoints == null){
-			throw new InvalidParameterException("Could not get Breakpoint-Container");
-		}
 		if(port == 0){
 			port = 2000;
 			for (int ctr = 0; ctr < 10; ctr++) {
@@ -392,42 +413,51 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 		case 'z':
 			remove = true;
 		case 'Z': { // Add breakpoint
-			if(breakpoints == null) logger.debug("No breakpoint container");
-			if(breakpoints == null) breakpoints = this.mspMote.getBreakpointsContainer();
-			if(breakpoints == null) logger.error("No breakpoint container");
 			
 			String[] tokens = cmd.split(",");
 			Integer addr = new Integer(Integer.parseInt(tokens[1], 16));
 			logger.debug("ADDR: " + addr );
-			
+			CPUMonitor bp = null;
+			Vector <Integer> bpv = null;
 			switch (cmd.charAt(1)) {
 			case '0': //This should be a memory breakpoint - but we don't care
 			case '1':
-				if (!remove) {
-					if (!breakpoints.breakpointExists(addr))
-						// breakpoints.addBreakpoint(addr) is broken!
-						breakpoints.addBreakpoint((File) null, (Integer) 0,addr);
-
-				} else {
-					breakpoints.removeBreakpoint(addr);
-				}
-				sendResponse("OK");
+				bp = mBp;
+				bpv = mBps;
+				break;
+			case '2': 
+				bp = mBpWrite;
+				bpv = mBpWrites;
+				break;
+			case '3':
+				bp = mBpRead;
+				bpv = mBpReads;
 				break;
 			case '4':
-				if (!remove) {
-					if (!breakpoints.breakpointExists(addr))
-						// breakpoints.addBreakpoint(addr) is broken!
-						breakpoints.addBreakpoint((File) null, (Integer) 0,addr);
-				} else {
-					breakpoints.removeBreakpoint(addr);
-				}
-				sendResponse("OK");
+				//Here we can use the default breakpoint
+				bp = mBp;
+				bpv = mBps;
 				break;
 			default: // Not supported
+				
+			}
+			if(bp != null){
+				if (!remove) {
+					//Add breakpoint to out list
+					bpv.add(addr);
+					cpu.addWatchPoint(addr, bp);
+
+				} else {
+					if(bpv.remove(addr)){
+						cpu.removeWatchPoint(addr, bp);
+					}
+				}
+				sendResponse("OK");
+			} else {
 				sendResponse("");
 			}
-		}
 			break;
+		}
 
 		default:
 			logger.info("Command unknown: " + cmd);
@@ -529,3 +559,4 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 		return mspMote;
 	}
 }
+
