@@ -70,7 +70,9 @@ import se.sics.cooja.PluginType;
 import se.sics.cooja.Simulation;
 import se.sics.cooja.VisPlugin;
 import se.sics.cooja.mspmote.MspMote;
-import se.sics.mspsim.core.CPUMonitor;
+import se.sics.mspsim.core.Memory.AccessMode;
+import se.sics.mspsim.core.Memory.AccessType;
+import se.sics.mspsim.core.MemoryMonitor;
 import se.sics.mspsim.core.EmulationException;
 import se.sics.mspsim.core.MSP430Core;
 import se.sics.mspsim.util.Utils;
@@ -94,34 +96,47 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 	private boolean stopThread = false;
 	private Vector<Integer> mBps = new Vector<Integer>();
 	
-	private CPUMonitor mBp = new CPUMonitor() {															
-		public void cpuAction(int type, int adr, int data) {
+	private MemoryMonitor mBp = new MemoryMonitor.Adapter() {															
+		@Override
+		public void notifyReadAfter(int addr, AccessMode mode, AccessType type) {
 			if (mspMote.getSimulation().isRunning()) {
 				/* Stop simulation immediately */
 				mspMote.stopNextInstruction();
 			}
+			
+		}
+
+		@Override
+		public void notifyWriteAfter(int dstAddress, int data, AccessMode mode) {
+			if (mspMote.getSimulation().isRunning()) {
+				/* Stop simulation immediately */
+				mspMote.stopNextInstruction();
+			}
+			
 		}
 	};
 	
 	private Vector<Integer> mBpReads = new Vector<Integer>();
-	private CPUMonitor mBpRead = new CPUMonitor() {															
-		public void cpuAction(int type, int adr, int data) {
-			if(type != MEMORY_READ) return;
+	private MemoryMonitor mBpRead = new MemoryMonitor.Adapter() {															
+		@Override
+		public void notifyReadAfter(int addr, AccessMode mode, AccessType type) {
 			if (mspMote.getSimulation().isRunning()) {
 				/* Stop simulation immediately */
 				mspMote.stopNextInstruction();
 			}
+			
 		}
 	};
 	
 	private Vector<Integer> mBpWrites = new Vector<Integer>();
-	private CPUMonitor mBpWrite = new CPUMonitor() {															
-		public void cpuAction(int type, int adr, int data) {
-			if(type != MEMORY_WRITE) return;
+	private MemoryMonitor mBpWrite = new MemoryMonitor.Adapter() {															
+		@Override
+		public void notifyWriteAfter(int dstAddress, int data, AccessMode mode) {
 			if (mspMote.getSimulation().isRunning()) {
 				/* Stop simulation immediately */
 				mspMote.stopNextInstruction();
 			}
+			
 		}
 	};
 	
@@ -417,7 +432,7 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 			String[] tokens = cmd.split(",");
 			Integer addr = new Integer(Integer.parseInt(tokens[1], 16));
 			logger.debug("ADDR: " + addr );
-			CPUMonitor bp = null;
+			MemoryMonitor bp = null;
 			Vector <Integer> bpv = null;
 			switch (cmd.charAt(1)) {
 			case '0': //This should be a memory breakpoint - but we don't care
