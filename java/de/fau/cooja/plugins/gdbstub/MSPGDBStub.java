@@ -62,14 +62,14 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.jdom.Element;
 
-import se.sics.cooja.ClassDescription;
-import se.sics.cooja.GUI;
-import se.sics.cooja.Mote;
-import se.sics.cooja.MotePlugin;
-import se.sics.cooja.PluginType;
-import se.sics.cooja.Simulation;
-import se.sics.cooja.VisPlugin;
-import se.sics.cooja.mspmote.MspMote;
+import org.contikios.cooja.ClassDescription;
+import org.contikios.cooja.Cooja;
+import org.contikios.cooja.Mote;
+import org.contikios.cooja.MotePlugin;
+import org.contikios.cooja.PluginType;
+import org.contikios.cooja.Simulation;
+import org.contikios.cooja.VisPlugin;
+import org.contikios.cooja.mspmote.MspMote;
 import se.sics.mspsim.core.Memory.AccessMode;
 import se.sics.mspsim.core.Memory.AccessType;
 import se.sics.mspsim.core.MemoryMonitor;
@@ -148,11 +148,11 @@ public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 	 *            MSP Mote
 	 * @param simulationToVisualize
 	 *            Simulation
-	 * @param gui
+	 * @param cooja
 	 *            Simulator
 	 */
-	public MSPGDBStub(Mote mote, Simulation simulationToVisualize, GUI gui) {
-		super("Msp GDBStub", gui);
+	public MSPGDBStub(Mote mote, Simulation simulationToVisualize, Cooja cooja) {
+		super("Msp GDBStub", cooja);
 		
 		logger.setLevel(Level.INFO);
 		
