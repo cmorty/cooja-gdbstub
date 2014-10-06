@@ -61,15 +61,16 @@ import javax.swing.JLabel;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.jdom.Element;
-
 import org.contikios.cooja.ClassDescription;
 import org.contikios.cooja.Cooja;
 import org.contikios.cooja.Mote;
 import org.contikios.cooja.MotePlugin;
 import org.contikios.cooja.PluginType;
 import org.contikios.cooja.Simulation;
+import org.contikios.cooja.SupportedArguments;
 import org.contikios.cooja.VisPlugin;
 import org.contikios.cooja.mspmote.MspMote;
+
 import se.sics.mspsim.core.Memory.AccessMode;
 import se.sics.mspsim.core.Memory.AccessType;
 import se.sics.mspsim.core.MemoryMonitor;
@@ -79,6 +80,7 @@ import se.sics.mspsim.util.Utils;
 
 @ClassDescription("Msp GDBStub")
 @PluginType(PluginType.MOTE_PLUGIN)
+@SupportedArguments(motes = {MspMote.class})
 public class MSPGDBStub extends VisPlugin implements Runnable, MotePlugin {
 	/**
 	 * 
